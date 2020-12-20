@@ -1,0 +1,119 @@
+#
+# create VMs by hand or setup baremetal servers
+#
+
+- name: Run OKD4 installer bootstrap-complete task
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-bootstrap-complete
+      tags:
+        - okd4-bootstrap-complete
+
+- name: Approving the CSRs for OKD4 nodes
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-approve-csr
+      tags:
+        - okd4-approve-csr
+
+- name: Configuring OKD4 infra nodes
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-infra-nodes
+      tags:
+        - okd4-infra-nodes
+
+- name: Run OKD4 installer install-complete task
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-install-complete
+      tags:
+        - okd4-install-complete
+
+- name: Post-install configure haproxy on lb1 and lb2
+  hosts: lb
+  gather_facts: false
+  roles:
+    - role: lb-postinstall
+      tags:
+        - lb-postinstall
+
+- name: Post-install configure haproxy on lb1 and lb2
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: baremetal-postinstall
+      tags:
+        - baremetal-postinstall
+
+- name: Run OKD4 post-install monitoring
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-postinstall-monitoring
+      tags:
+        - okd4-postinstall-monitoring
+
+- name: Run FCOS post-install tasks
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-postinstall-fcos
+      tags:
+        - okd4-postinstall-fcos
+
+- name: OKD4 post-install configure ntp time sync
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: okd4-postinstall-ntp
+      tags:
+        - okd4-postinstall-ntp
+
+- name: OKD4 post-install configure nfs provisioner
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: okd4-postinstall-nfs
+      tags:
+        - okd4-postinstall-nfs
+      when: nfs_subdir_external_provisioner_install|default(false)|bool == true
+
+- name: OKD4 post-install configure registry
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: okd4-postinstall-registry
+      tags:
+        - okd4-postinstall-registry
+      when: openshift_image_registry_install|default(false)|bool == true
+
+- name: OKD4 post-install enable RedHat OperatorHub
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: okd4-postinstall-operatorhub
+      tags:
+        - okd4-postinstall-operatorhub
+      when: openshift_pull_secret|length > 0
+
+- name: OKD4 post-install configure Cluster Logging
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: okd4-postinstall-logging
+      tags:
+        - okd4-postinstall-logging
+      when: openshift_cluster_logging_install|default(false) == true

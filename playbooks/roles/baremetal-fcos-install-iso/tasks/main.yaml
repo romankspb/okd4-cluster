@@ -1,0 +1,39 @@
+- name: Remove old FCOS iso installer directory if exist
+  file:
+    path: "{{okd4_installer_directory}}/iso"
+    state: absent
+
+- name: Create FCOS iso installer directory
+  file:
+    path: "{{okd4_installer_directory}}/iso"
+    state: directory
+    mode: '0750'
+
+- name: Create OKD4 intaller fcos-install-iso.yaml
+  template:
+    src: fcos-install-iso.yaml
+    dest: "{{okd4_installer_directory}}/iso/fcos-install-iso.yaml"
+
+- name: Fix ansible ugly formatting in fcos-install-iso.ign
+  shell: sed -i 's/^\s*ip=/         ip=/' {{okd4_installer_directory}}/iso/fcos-install-iso.yaml
+  args:
+    warn: false
+
+- name: Create OKD4 installer fcos-install-iso.ign
+  shell: fcct -p -o {{okd4_installer_directory}}/iso/fcos-install-iso.ign {{okd4_installer_directory}}/iso/fcos-install-iso.yaml
+
+- name: Remove old fcos-install.iso if present
+  file:
+    path: "{{okd4_installer_directory}}/iso/fcos-install.iso"
+    state: absent
+
+- name: Create OKD4 installer fcos-install.iso
+  shell: coreos-installer iso ignition embed -f -i {{okd4_installer_directory}}/iso/fcos-install-iso.ign -o {{okd4_installer_directory}}/iso/fcos-install.iso {{baremetal_fcos_iso_file}}
+
+- pause:
+      seconds: 3
+      prompt: |
+            1. Boot OKD nodes using ISO '{{okd4_installer_directory}}/iso/fcos-install.iso'
+            2. Setup Fedora CoreOS by command 'fcos-install-block-device.sh file.ign.b64 node_hostname block_device'
+            3. Reboot the servers and make sure they are available
+            4. Run playbook baremetal_cluster_setup_complete.yaml

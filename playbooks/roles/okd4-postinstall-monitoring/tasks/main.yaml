@@ -1,0 +1,14 @@
+- name: Create OKD4 cluster monitoring configmap
+  template:
+    src: templates/cluster-monitoring-configmap.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/cluster-monitoring-configmap.yaml"
+
+- name: Apply OKD cluster monitoring configmap
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/cluster-monitoring-configmap.yaml"
+  register: clu_mon_config
+
+- name: Apply OKD cluster monitoring configmap
+  ignore_errors: yes
+  debug:
+    msg: "{{clu_mon_config.stdout_lines}}}"
+  when: debug|default(false)|bool == true

@@ -1,0 +1,94 @@
+- name: Remove old VMWare VM configs directory if exist
+  file:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg"
+    state: absent
+
+- name: Create VMWare VM configs directory
+  file:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg"
+    state: directory
+    mode: '0750'
+
+- name: "Create VM configs for manual VM creation: Helper VM"
+  copy:
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg/{{hostvars[item]['hostname']}}.txt"
+    content: |
+        HARDWARE
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+
+        CUSTOMIZATIONS
+        dns_servers: "{{cluster_dns_servers}}"
+        dns_suffix: "{{cluster_base_domain}}"
+        domain: "{{cluster_base_domain}}"
+
+        NETWORKS
+        network: "{{vc_network}}"
+        ip: "{{hostvars[item]['ipaddr'] | ipaddr('address')}}"
+        netmask: "{{hostvars[item]['ipaddr'] | ipaddr('netmask')}}"
+        gateway: "{{hostvars[item]['gateway']}}"
+        type: static
+
+        CUSTOMVALUES
+        key: "disk.EnableUUID"
+        value: "TRUE"
+  with_items:
+    - "{{groups[provision_group_helper]}}"
+
+- name: "Create VM configs for manual VM creation: Loadbalancer VMs"
+  copy:
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg/{{hostvars[item]['hostname']}}.txt"
+    content: |
+        HARDWARE
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+
+        CUSTOMIZATIONS
+        dns_servers: "{{cluster_dns_servers}}"
+        dns_suffix: "{{cluster_base_domain}}"
+        domain: "{{cluster_base_domain}}"
+
+        NETWORKS
+        network: "{{vc_network}}"
+        ip: "{{hostvars[item]['lb_api_ipaddr'] | ipaddr('address')}}"
+        netmask: "{{hostvars[item]['lb_api_ipaddr'] | ipaddr('netmask')}}"
+        gateway: "{{hostvars[item]['gateway']}}"
+        type: static
+
+        CUSTOMVALUES
+        key: "disk.EnableUUID"
+        value: "TRUE"
+  with_items:
+    - "{{groups[provision_group_lb]}}"
+
+- name: "Create VM configs for manual VM creation: OKD cluster VMs"
+  copy:
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg/{{hostvars[item]['hostname']}}.txt"
+    content: |
+        DISK
+        size_gb: "{{hostvars[item]['disk_size_gb']}}"
+        type: thin
+        datastore: "{{vc_datastore}}"
+
+        HARDWARE
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+        version: 14
+
+        NETWORKS
+        network: "{{vc_network}}"
+
+        CUSTOMVALUES
+        key: "guestinfo.ignition.config.data"
+        value: "{{ lookup('template', '../vmware-okd4/templates/append-bootstrap.j2') | to_json | b64encode }}"
+        key: "guestinfo.ignition.config.data.encoding"
+        value: base64
+        key: "disk.EnableUUID"
+        value: "TRUE"
+        key: "guestinfo.afterburn.initrd.network-kargs"
+        value: "ip={{hostvars[item]['ipaddr'] | ipaddr('address')}}::{{hostvars[item]['gateway'] | ipaddr('address')}}:{{hostvars[item]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[item]['hostname']}}:{{hostvars[item]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}"
+  with_items:
+    - "{{groups[provision_group_bootstrap]}}"
+    - "{{groups[provision_group_masters]}}"
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"

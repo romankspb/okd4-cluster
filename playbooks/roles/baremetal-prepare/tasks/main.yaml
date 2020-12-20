@@ -1,0 +1,16 @@
+- pause:
+      seconds: 5
+      prompt: |
+            Install CentOS 8 on nodes lb1, lb2 and do the following on them:
+            1. Configure the network on the nodes according to inventory
+            2. Configure access to nodes via ssh with key authorization
+            3. Make sure nodes are accessible via ssh
+            4. Give the nodes Internet access
+
+- name: Install Fedora CoreOS Config Transpiler and CoreOS installer
+  dnf:
+    name:
+      - fedora-coreos-config-transpiler
+      - coreos-installer
+    state: present
+  become: true

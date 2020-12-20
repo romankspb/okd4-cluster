@@ -1,0 +1,40 @@
+- name: "Create VMWare VM Folder {{cluster_name}}"
+  vcenter_folder:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    datacenter_name: "{{vc_datacenter}}"
+    folder_name: "{{cluster_name}}"
+    folder_type: vm
+    state: present
+
+- name: Upload FCOS OVA Template
+  vmware_deploy_ovf:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    datacenter: "{{vc_datacenter}}"
+    cluster: "{{vc_cluster}}"
+    datastore: "{{vc_datastore}}"
+    folder: "/{{vc_datacenter}}/vm/{{cluster_name}}"
+    allow_duplicates: no
+    disk_provisioning: thin
+    networks: "{u'VM Network':u'{{vc_network}}'}"
+    name: "{{vm_template_okd}}"
+    ova: "{{vm_template_okd_ova_file}}"
+    power_on: no
+
+- name: Remove old VMWare VM configs directory if exist
+  file:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg"
+    state: absent
+  when: vmware_export_vm_cfg|default(false)|bool == true
+
+- name: Create VMWare VM configs directory
+  file:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}-vmware-vm-cfg"
+    state: directory
+    mode: '0750'
+  when: vmware_export_vm_cfg|default(false)|bool == true

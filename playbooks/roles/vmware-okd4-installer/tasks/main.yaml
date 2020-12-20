@@ -1,0 +1,30 @@
+- name: Create OKD4 install-config.yaml
+  template:
+    src: install-config.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/install-config.yaml"
+
+- name: Create manifests
+  shell: "{{okd4_installer_directory}}/openshift-install create manifests --dir={{okd4_installer_directory}}/{{cluster_name}}"
+
+- name: Make master nodes unschedulable
+  replace:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}/manifests/cluster-scheduler-02-config.yml"
+    regexp: 'mastersSchedulable: true$'
+    replace: 'mastersSchedulable: false'
+
+# Need for VMWare UPI, see https://docs.okd.io/latest/installing/installing_vsphere/installing-vsphere.html
+- name: Find the Kubernetes manifest files that define the control plane machines and compute machineSets
+  find:
+    paths: "{{okd4_installer_directory}}/{{cluster_name}}/openshift/"
+    patterns: "^99_openshift-cluster-api_master-machines-.*.yaml|^99_openshift-cluster-api_worker-machineset-.*.yaml"
+    use_regex: true
+  register: files_to_delete
+
+- name: Remove the Kubernetes manifest files that define the control plane machines and compute machineSets
+  file:
+    path: "{{item.path}}"
+    state: absent
+  with_items: "{{files_to_delete.files}}"
+
+- name: Create ignition configs
+  shell: "{{okd4_installer_directory}}/openshift-install create ignition-configs --dir={{okd4_installer_directory}}/{{cluster_name}}"

@@ -1,0 +1,6 @@
+- name: Fix localtime FCOS bug
+  shell: "ssh -o 'StrictHostKeyChecking=no' core@{{hostvars[item]['hostname']}} 'sudo rm -rf /etc/localtime ; sudo ln -s /usr/share/zoneinfo/UTC /etc/localtime'"
+  with_items:
+    - "{{groups[provision_group_masters]}}"
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"

@@ -1,0 +1,21 @@
+- name: Wait until all VMs are up
+  shell: "ping -c 2 -w 2 {{hostvars[item]['ipaddr'] | ipaddr('address')}}"
+  register: ping_result
+  until: ping_result.rc == 0
+  delay: 5
+  retries: 1000
+  with_items:
+    - "{{groups[provision_group_bootstrap]}}"
+    - "{{groups[provision_group_masters]}}"
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"
+
+- name: Wait for OKD4 bootstrap-complete
+  shell: "{{okd4_installer_directory}}/openshift-install --dir={{okd4_installer_directory}}/{{cluster_name}} wait-for bootstrap-complete --log-level=info"
+  register: bootstrap_complete
+
+- name: Debug OKD4 bootstrap-complete
+  ignore_errors: yes
+  debug:
+    msg: "{{bootstrap_complete.stdout_lines}}}"
+  when: debug|default(false)|bool == true

@@ -1,0 +1,186 @@
+- name: Create OKD4 Elasticsearch Operator namespace config
+  template:
+    src: templates/logging-elasticsearch-operator-ns.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-elasticsearch-operator-ns.yaml"
+
+- name: Create OKD4 Elasticsearch Operator namespace
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/logging-elasticsearch-operator-ns.yaml"
+  register: eo_namespace
+
+- name: Create OKD4 Elasticsearch Operator namespace
+  ignore_errors: yes
+  debug:
+    msg: "{{eo_namespace.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Create OKD4 Cluster Logging Operator namespace config
+  template:
+    src: templates/logging-cluster-logging-operator-ns.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-operator-ns.yaml"
+
+- name: Create OKD4 Cluster Logging Operator namespace
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-operator-ns.yaml"
+  register: clo_namespace
+
+- name: Create OKD4 Cluster Logging Operator namespace
+  ignore_errors: yes
+  debug:
+    msg: "{{clo_namespace.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Create OKD4 Elasticsearch Operator group config
+  template:
+    src: templates/logging-elasticsearch-operator-group.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-elasticsearch-operator-group.yaml"
+
+- name: Install OKD4 Elasticsearch Operator (create operator group)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/logging-elasticsearch-operator-group.yaml"
+  register: eo_og
+
+- name: Install OKD4 Elasticsearch Operator (create operator group)
+  ignore_errors: yes
+  debug:
+    msg: "{{eo_og.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Create OKD4 Elasticsearch Operator subscription config
+  template:
+    src: templates/logging-elasticsearch-operator-subscription.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-elasticsearch-operator-subscription.yaml"
+
+- name: Install OKD4 Elasticsearch Operator (create subscription)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/logging-elasticsearch-operator-subscription.yaml"
+  register: eo_sub
+
+- name: Install OKD4 Elasticsearch Operator (create subscription)
+  ignore_errors: yes
+  debug:
+    msg: "{{eo_sub.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Verify the Elasticsearch Operator installation (get all namespaces)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig get project --no-headers --sort-by=.metadata.name -o custom-columns=Name:metadata.name"
+  register: all_projects
+
+- name: Verify the Elasticsearch Operator installation (check operator in each namespace)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig get csv --all-namespaces --no-headers -o custom-columns=Name:metadata.name,NS:.metadata.namespace,Phase:.status.phase --sort-by=.metadata.namespace | grep -E 'elasticsearch-operator.*Succeeded'"
+  register: es_csv_succeeded
+  until: es_csv_succeeded.stdout_lines|length == all_projects.stdout_lines|length
+  delay: 5
+  retries: 100
+
+
+- name: Create OKD4 Cluster Logging Operator group config
+  template:
+    src: templates/logging-cluster-logging-operator-group.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-operator-group.yaml"
+
+- name: Install OKD4 Cluster Logging Operator (create operator group)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-operator-group.yaml"
+  register: clo_og
+
+- name: Install OKD4 Cluster Logging Operator (create operator group)
+  ignore_errors: yes
+  debug:
+    msg: "{{clo_og.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Create OKD4 Cluster Logging Operator subscription config
+  template:
+    src: templates/logging-cluster-logging-operator-subscription.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-operator-subscription.yaml"
+
+- name: Install OKD4 Cluster Logging Operator (create subscription)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-operator-subscription.yaml"
+  register: clo_sub
+
+- name: Install OKD4 Cluster Logging Operator (create subscription)
+  ignore_errors: yes
+  debug:
+    msg: "{{clo_sub.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Verify the Cluster Logging Operator installation (check operator in openshift-logging namespace)
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig get csv -n openshift-logging --no-headers -o custom-columns=Name:metadata.name,NS:.metadata.namespace,Phase:.status.phase --sort-by=.metadata.namespace | grep -E 'clusterlogging.*Succeeded'"
+  register: cl_csv_succeeded
+  until: cl_csv_succeeded.stdout_lines|length == 1
+  delay: 5
+  retries: 100
+
+
+- name: Create OKD4 Cluster Logging instance config
+  template:
+    src: templates/logging-cluster-logging-instance-cr.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-instance-cr.yaml"
+
+- name: Apply OKD4 Cluster Logging instance config
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig apply -f {{okd4_installer_directory}}/{{cluster_name}}/logging-cluster-logging-instance-cr.yaml"
+  register: cl_instance
+  until: cl_instance.rc == 0
+  delay: 5
+  retries: 100
+
+- name: Apply OKD4 Cluster Logging instance config
+  ignore_errors: yes
+  debug:
+    msg: "{{cl_instance.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Wait for cluster-logging-operator pod in openshift-logging namespace become ready
+  shell: "{{okd4_installer_directory}}/kubectl --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig wait pods -l name=cluster-logging-operator --for=condition=Ready --namespace=openshift-logging --timeout=1200s"
+  register: clop_ready
+  until: clop_ready.rc == 0
+  delay: 5
+  retries: 100
+
+- name: Wait for cluster-logging-operator pod in openshift-logging namespace become ready
+  ignore_errors: yes
+  debug:
+    msg: "{{clop_ready.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Wait for Elasticsearch pods in openshift-logging namespace become ready
+  shell: "{{okd4_installer_directory}}/kubectl --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig wait pods -l component=elasticsearch --for=condition=Ready --namespace=openshift-logging --timeout=1200s"
+  register: es_ready
+  until: es_ready.rc == 0
+  delay: 5
+  retries: 100
+
+- name: Wait for Elasticsearch pods in openshift-logging namespace become ready
+  ignore_errors: yes
+  debug:
+    msg: "{{es_ready.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+
+- name: Wait for Kibana pods in openshift-logging namespace become ready
+  shell: "{{okd4_installer_directory}}/kubectl --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig wait pods -l component=kibana --for=condition=Ready --namespace=openshift-logging --timeout=1200s"
+  register: kibana_ready
+  until: kibana_ready.rc == 0
+  delay: 5
+  retries: 100
+
+- name: Wait for Kibana pods in openshift-logging namespace become ready
+  ignore_errors: yes
+  debug:
+    msg: "{{kibana_ready.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Wait for Fluentd pods in openshift-logging namespace become ready
+  shell: "{{okd4_installer_directory}}/kubectl --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig wait pods -l component=fluentd --for=condition=Ready --namespace=openshift-logging --timeout=1200s"
+  register: fluentd_ready
+  until: fluentd_ready.rc == 0
+  delay: 5
+  retries: 100
+
+- name: Wait for Fluentd pods in openshift-logging namespace become ready
+  ignore_errors: yes
+  debug:
+    msg: "{{fluentd_ready.stdout_lines}}}"
+  when: debug|default(false)|bool == true

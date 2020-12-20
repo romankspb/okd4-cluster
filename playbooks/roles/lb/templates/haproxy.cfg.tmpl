@@ -1,0 +1,87 @@
+global
+    maxconn     20000
+    log         /dev/log local0 info
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    user        haproxy
+    group       haproxy
+    daemon
+
+    stats socket /var/lib/haproxy/stats
+
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          300s
+    timeout server          300s
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 20000
+
+listen stats
+    bind :9000
+    mode http
+    stats enable
+    stats uri /
+
+frontend okd4-api
+    bind :6443
+    default_backend okd4-api
+    mode tcp
+    option tcplog
+
+backend okd4-api
+    balance source
+    mode tcp
+    server bootstrap {{hostvars[groups['bootstrap'][0]]['ipaddr'] | ipaddr('address')}}:6443 check
+    server master1 {{hostvars[groups['masters'][0]]['ipaddr'] | ipaddr('address')}}:6443 check
+    server master2 {{hostvars[groups['masters'][1]]['ipaddr'] | ipaddr('address')}}:6443 check
+    server master3 {{hostvars[groups['masters'][2]]['ipaddr'] | ipaddr('address')}}:6443 check
+
+frontend okd4-cfg
+    bind :22623
+    default_backend okd4-cfg
+    mode tcp
+    option tcplog
+
+backend okd4-cfg
+    balance source
+    mode tcp
+    server bootstrap {{hostvars[groups['bootstrap'][0]]['ipaddr'] | ipaddr('address')}}:22623 check
+    server master1 {{hostvars[groups['masters'][0]]['ipaddr'] | ipaddr('address')}}:22623 check
+    server master2 {{hostvars[groups['masters'][1]]['ipaddr'] | ipaddr('address')}}:22623 check
+    server master3 {{hostvars[groups['masters'][2]]['ipaddr'] | ipaddr('address')}}:22623 check
+
+frontend okd4-ingress-80
+    bind :80
+    default_backend okd4-ingress-80
+    mode tcp
+    option tcplog
+
+backend okd4-ingress-80
+    balance source
+    mode tcp
+    server infra1 {{hostvars[groups['infras'][0]]['ipaddr'] | ipaddr('address')}}:80 check
+    server infra2 {{hostvars[groups['infras'][1]]['ipaddr'] | ipaddr('address')}}:80 check
+    server infra3 {{hostvars[groups['infras'][2]]['ipaddr'] | ipaddr('address')}}:80 check
+
+frontend okd4-ingress-443
+    bind :443
+    default_backend okd4-ingress-443
+    mode tcp
+    option tcplog
+
+backend okd4-ingress-443
+    balance source
+    mode tcp
+    server infra1 {{hostvars[groups['infras'][0]]['ipaddr'] | ipaddr('address')}}:443 check
+    server infra2 {{hostvars[groups['infras'][1]]['ipaddr'] | ipaddr('address')}}:443 check
+    server infra3 {{hostvars[groups['infras'][2]]['ipaddr'] | ipaddr('address')}}:443 check

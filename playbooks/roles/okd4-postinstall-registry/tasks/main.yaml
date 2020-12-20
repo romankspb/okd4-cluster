@@ -1,0 +1,24 @@
+- name: Create OKD4 Registry PVC config
+  template:
+    src: templates/openshift-image-registry-pvc.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/openshift-image-registry-pvc.yaml"
+
+- name: Create OKD4 Registry PVC
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -n openshift-image-registry -f {{okd4_installer_directory}}/{{cluster_name}}/openshift-image-registry-pvc.yaml"
+  register: registry_pvc
+
+- name: Create OKD4 Registry PVC
+  ignore_errors: yes
+  debug:
+    msg: "{{registry_pvc.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Configure OKD4 Registry 1 replica for using VMWare RWO PV and placing on infra nodes
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig patch config.imageregistry.operator.openshift.io/cluster --patch '{\"spec\":{\"managementState\":\"Managed\",\"nodeSelector\":{\"node-role.kubernetes.io/infra\":\"\"},\"replicas\":1,\"rolloutStrategy\":\"Recreate\",\"storage\":{\"pvc\":{\"claim\":\"image-registry-pvc\"}}}}' --type=merge"
+  register: registry_config
+
+- name: Configure OKD4 Registry 1 replica for using VMWare RWO PV and placing on infra nodes
+  ignore_errors: yes
+  debug:
+    msg: "{{registry_config.stdout_lines}}}"
+  when: debug|default(false)|bool == true

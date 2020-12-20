@@ -1,0 +1,18 @@
+{
+  "ignition": {
+    "config": {
+      "merge": [
+        {
+          "source": "http://{{hostvars[groups['helper'][0]]['ipaddr'] | ipaddr('address')}}/ignition-downloader.php",
+          "verification": {}
+        }
+      ]
+    },
+    "timeouts": {},
+    "version": "3.0.0"
+  },
+  "networkd": {},
+  "passwd": {},
+  "storage": {},
+  "systemd": {}
+}

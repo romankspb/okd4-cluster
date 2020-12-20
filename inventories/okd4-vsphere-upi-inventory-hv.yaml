@@ -1,0 +1,202 @@
+#
+# VMWARE without DRS: hypervisor placement
+#
+
+all:
+  vars:
+    debug: true
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_user: root
+
+    okd4_installer_url: "https://github.com/openshift/okd/releases/download/4.5.0-0.okd-2020-10-15-235428/openshift-install-linux-4.5.0-0.okd-2020-10-15-235428.tar.gz"
+    okd4_installer_directory: "/home/romank/work/SRC/okd4-installer"
+
+    okd4_client_url: "https://github.com/openshift/okd/releases/download/4.5.0-0.okd-2020-10-15-235428/openshift-client-linux-4.5.0-0.okd-2020-10-15-235428.tar.gz"
+
+    ssh_pub_key: "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEApZRcJV7ii6qIe/mnPVow8qwVcu6hJYTK4UlvRZ7UF7fDnHcMPMfOPfIgfcX78BOeV4QLU1iaa4ff1ZodqoQkF//E0NBK/kqel4KNDdvpC1AKPBD9pgxU6VojW0b+9yKJnYi32S2JtSrXt6lJ21VKGRkc4kBBfXSHkFJsEVSCs9xNRpNkNbQSPeNjl+xTMHwg16smo3q0TV9OSLPqm7bAiCQGaHNKCVpv6osjUXTgqEfMkDlTEAz4bRK8eM67aR/moFL4S+lVNWhyBwT4OzqeBcUugjxwXazvH8mJ3+nm8cvEZOwtVOAkPqSdfZorRk94Huv+bzatFI/Dlo/FCBSFMw== r.kravtsov@domain.ru"
+
+    provision_group_lb: lb
+    provision_group_helper: helper
+    provision_group_bootstrap: bootstrap
+    provision_group_masters: masters
+    provision_group_infras: infras
+    provision_group_workers: workers
+
+    vm_template_helper: CentOS8-template
+    vm_template_lb: CentOS8-template
+    vm_template_okd: FCOS32-template
+    vm_template_okd_ova_file: "/home/romank/Downloads/soft/os/FCOS/fedora-coreos-32.20200923.3.0-vmware.x86_64.ova"
+
+    cluster_name: okd4-vsphere-upi
+    cluster_base_domain: vsphere-upi.local
+    cluster_dns_servers:
+      - 10.196.16.18
+      - 10.196.4.1
+    cluster_ntp_servers:
+      - ntp1.domain.local
+      - ntp2.domain.local
+      - ntp3.domain.local
+
+    cluster_pods_network: 10.108.0.0/14
+
+    # OKD4 API VIP
+    cluster_api_lb_ipaddr: 10.197.0.102/22
+    cluster_api_lb_dnsname: "api.{{cluster_name}}.{{cluster_base_domain}}"
+    cluster_api_int_lb_dnsname: "api-int.{{cluster_name}}.{{cluster_base_domain}}"
+
+    # OKD4 Ingress VIP
+    ingress_lb_ipaddr: 10.197.0.104/22
+    ingress_apps_lb_dnsname: "*.apps.{{cluster_name}}.{{cluster_base_domain}}"
+
+    # Registry (configured default storage class is required)
+    openshift_image_registry_install: true
+    openshift_image_registry_pvc_size: "200Gi"
+
+    # OpenShiftSDN (default) or OVNKubernetes
+    openshift_network_type: "OpenShiftSDN"
+
+    # Cluster Logging (configured storage class is required)
+    openshift_cluster_logging_install: true
+    openshift_cluster_logging_subscription_channel: "4.5"
+    openshift_cluster_logging_es_sc_name: "thin"
+    openshift_cluster_logging_es_pvc_size: "200Gi"
+    openshift_cluster_logging_es_node_count: "1"
+    openshift_cluster_logging_es_redundancy: "ZeroRedundancy"
+    openshift_cluster_logging_retention_application: "1d"
+    openshift_cluster_logging_retention_infra: "1d"
+    openshift_cluster_logging_retention_audit: "1d"
+
+  children:
+    lb:
+      hosts:
+        lb1:
+          hypervisor: 10.196.17.194
+          memory: 4000
+          vcpu: 8
+          ansible_host: okd4-lb1.domain.local
+          hostname: okd4-lb1.domain.local
+          gateway: 10.197.0.1
+          lb_api_if: ens192
+          lb_api_ipaddr: 10.197.0.101/22
+          lb_ingress_if: ens192
+          lb_ingress_ipaddr: 10.197.0.101/22
+        lb2:
+          hypervisor: 10.196.17.195
+          memory: 4000
+          vcpu: 8
+          ansible_host: okd4-lb2.domain.local
+          hostname: okd4-lb2.domain.local
+          gateway: 10.197.0.1
+          lb_api_if: ens192
+          lb_api_ipaddr: 10.197.0.103/22
+          lb_ingress_if: ens192
+          lb_ingress_ipaddr: 10.197.0.103/22
+    helper:
+      hosts:
+        helper1:
+          hypervisor: 10.196.17.194
+          memory: 512
+          vcpu: 2
+          ansible_host: okd4-helper.domain.local
+          hostname: okd4-helper.domain.local
+          ipaddr: 10.197.0.99/22
+          gateway: 10.197.0.1
+          ifname: ens192
+    bootstrap:
+      hosts:
+        bootstrap1:
+          hypervisor: 10.196.17.195
+          memory: 16384
+          vcpu: 8
+          hostname: okd4-bootstrap.domain.local
+          ipaddr: 10.197.0.100/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+    masters:
+      hosts:
+        master1:
+          hypervisor: 10.196.17.194
+          memory: 16384
+          vcpu: 8
+          hostname: okd4-master1.domain.local
+          ipaddr: 10.197.0.105/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+        master2:
+          hypervisor: 10.196.17.195
+          memory: 16384
+          vcpu: 8
+          hostname: okd4-master2.domain.local
+          ipaddr: 10.197.0.106/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+        master3:
+          hypervisor: 10.196.17.196
+          memory: 16384
+          vcpu: 8
+          hostname: okd4-master3.domain.local
+          ipaddr: 10.197.0.107/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+    infras:
+      hosts:
+        infra1:
+          hypervisor: 10.196.18.187
+          memory: 32768
+          vcpu: 8
+          hostname: okd4-infra1.domain.local
+          ipaddr: 10.197.0.108/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+        infra2:
+          hypervisor: 10.196.18.41
+          memory: 32768
+          vcpu: 8
+          hostname: okd4-infra2.domain.local
+          ipaddr: 10.197.0.109/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+        infra3:
+          hypervisor: 10.196.17.194
+          memory: 32768
+          vcpu: 8
+          hostname: okd4-infra3.domain.local
+          ipaddr: 10.197.0.110/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 150
+    workers:
+      hosts:
+        worker1:
+          hypervisor: 10.196.17.195
+          memory: 32768
+          vcpu: 8
+          hostname: okd4-worker1.domain.local
+          ipaddr: 10.197.0.111/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 200
+        worker2:
+          hypervisor: 10.196.17.196
+          memory: 32768
+          vcpu: 8
+          hostname: okd4-worker2.domain.local
+          ipaddr: 10.197.0.112/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 200
+        worker3:
+          hypervisor: 10.196.18.187
+          memory: 32768
+          vcpu: 8
+          hostname: okd4-worker3.domain.local
+          ipaddr: 10.197.0.113/22
+          gateway: 10.197.0.1
+          ifname: ens192
+          disk_size_gb: 200

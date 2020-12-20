@@ -1,0 +1,14 @@
+- name: Destroy bootstrap VM
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    cluster: "{{vc_cluster}}"
+    datacenter: "{{vc_datacenter}}"
+    name: "{{hostvars[item]['hostname']}}"
+    state: absent
+    force: yes
+  register: vmware_guest_results
+  with_items:
+    - "{{groups[provision_group_bootstrap]}}"

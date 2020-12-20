@@ -1,0 +1,33 @@
+- name: Create OKD4 installer directory
+  file:
+    path: "{{okd4_installer_directory}}"
+    state: directory
+    mode: '0750'
+
+- name: Remove old OKD4 deployment directory if exist
+  file:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}"
+    state: absent
+
+- name: Create OKD4 deployment directory
+  file:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}"
+    state: directory
+    mode: '0750'
+
+- name: Get OKD4 installer
+  get_url:
+    url: "{{okd4_installer_url}}"
+    dest: "{{okd4_installer_directory}}/{{okd4_installer_filename}}"
+
+- name: Check if OKD4 installer exists
+  stat: 
+    path: "{{okd4_installer_directory}}/openshift-install"
+  register: okd4_installer
+
+- name: Unpack OKD4 installer
+  unarchive:
+    src: "{{okd4_installer_directory}}/{{okd4_installer_filename}}"
+    dest: "{{okd4_installer_directory}}"
+    remote_src: yes
+  when: okd4_installer.stat.exists == false

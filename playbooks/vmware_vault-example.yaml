@@ -1,0 +1,10 @@
+vc_host: "vc.domain.local"
+vc_user: "Administrator@vsphere.local"
+vc_password: "adminpassword"
+vc_datacenter: "Datacenter"
+vc_cluster: "Cluster"
+vc_datastore: "Datastore"
+vc_network: "Network"
+openshift_pull_secret: '{"auths":{"cloud.openshift.com":{"auth":"SECRET_KEY","email":"your_email@domain.ru"}}}'
+vc_user_okd: "okd4@vsphere.local"
+vc_password_okd: "okd4password"

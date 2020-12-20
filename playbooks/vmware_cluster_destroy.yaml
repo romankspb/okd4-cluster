@@ -1,0 +1,10 @@
+- name: Destroy OKD4 VMs on VMWare
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-vm-destroy
+      tags:
+        - vmware-vm-destroy

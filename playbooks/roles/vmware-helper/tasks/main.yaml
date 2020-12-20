@@ -1,0 +1,75 @@
+- name: "Create Helper VM (cluster placement)"
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    name: "{{hostvars[item]['hostname']}}"
+    state: poweredon
+    template: "{{vm_template_lb}}"
+    cluster: "{{vc_cluster}}"
+    datacenter: "{{vc_datacenter}}"
+    datastore: "{{vc_datastore}}"
+    folder: "{{cluster_name}}"
+    hardware:
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+    customization:
+        dns_servers: "{{cluster_dns_servers}}"
+        dns_suffix: "{{cluster_base_domain}}"
+        domain: "{{cluster_base_domain}}"
+    networks:
+      - name: "{{vc_network}}"
+        ip: "{{hostvars[item]['ipaddr'] | ipaddr('address')}}"
+        netmask: "{{hostvars[item]['ipaddr'] | ipaddr('netmask')}}"
+        gateway: "{{hostvars[item]['gateway']}}"
+        type: static
+    customvalues:
+      - key: "disk.EnableUUID"
+        value: "TRUE"
+    wait_for_ip_address: yes
+    wait_for_customization: no
+  delegate_to: localhost
+  register: vmware_guest_results
+  with_items:
+    - "{{groups[provision_group_helper]}}"
+  when:
+    - hostvars[item].hypervisor is not defined
+
+- name: "Create Helper VM (hypervisor placement)"
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    name: "{{hostvars[item]['hostname']}}"
+    state: poweredon
+    template: "{{vm_template_lb}}"
+    esxi_hostname: "{{hostvars[item]['hypervisor']}}"
+    datacenter: "{{vc_datacenter}}"
+    datastore: "{{vc_datastore}}"
+    folder: "{{cluster_name}}"
+    hardware:
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+    customization:
+        dns_servers: "{{cluster_dns_servers}}"
+        dns_suffix: "{{cluster_base_domain}}"
+        domain: "{{cluster_base_domain}}"
+    networks:
+      - name: "{{vc_network}}"
+        ip: "{{hostvars[item]['ipaddr'] | ipaddr('address')}}"
+        netmask: "{{hostvars[item]['ipaddr'] | ipaddr('netmask')}}"
+        gateway: "{{hostvars[item]['gateway']}}"
+        type: static
+    customvalues:
+      - key: "disk.EnableUUID"
+        value: "TRUE"
+    wait_for_ip_address: yes
+    wait_for_customization: no
+  delegate_to: localhost
+  register: vmware_guest_results
+  with_items:
+    - "{{groups[provision_group_helper]}}"
+  when:
+    - hostvars[item].hypervisor is defined

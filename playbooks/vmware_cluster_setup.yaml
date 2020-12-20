@@ -1,0 +1,245 @@
+- name: Prepare Ansible controller host
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: prepare
+      tags:
+        - prepare
+
+- name: Prepare OKD4 installer
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    okd4_installer_filename: "{{okd4_installer_url | basename}}"
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: okd4-installer
+      tags:
+        - okd4-installer
+
+- name: Prepare OKD4 installer for VMWare platform
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    okd4_installer_filename: "{{okd4_installer_url | basename}}"
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-okd4-installer
+      tags:
+        - vmware-okd4-installer
+
+- name: Prepare OKD4 client
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    okd4_client_filename: "{{okd4_client_url | basename}}"
+  roles:
+    - role: okd4-client
+      tags:
+        - okd4-client
+
+- name: Prepare VMWare for cluster deployment
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-prepare
+      tags:
+        - vmware-prepare
+
+- name: Export VMWare VM configs
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-export-vm-cfg
+      tags:
+        - vmware-export-vm-cfg
+      when: vmware_export_vm_cfg|default(false)|bool == true
+
+- name: Create Helper VM on VMWare
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-helper
+      tags:
+        - vmware-helper
+
+- name: Configure httpd on helper
+  hosts: helper
+  gather_facts: false
+  roles:
+    - role: helper
+      tags:
+        - helper
+
+- name: Create loadbalancer VMs on VMWare
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-lb
+      tags:
+        - vmware-lb
+
+- name: Configure haproxy on lb1 and lb2
+  hosts: lb
+  gather_facts: false
+  roles:
+    - role: lb
+      tags:
+        - lb
+
+- name: Configure keepalived on lb1
+  hosts: lb[0]
+  gather_facts: false
+  roles:
+    - role: lb1
+      tags:
+        - keepalived
+
+- name: Configure keepalived on lb2
+  hosts: lb[1]
+  gather_facts: false
+  roles:
+    - role: lb2
+      tags:
+        - keepalived
+
+- name: Create OKD4 VMs on VMWare
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-okd4
+      tags:
+        - vmware-okd4
+
+- name: Run OKD4 installer bootstrap-complete task
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-bootstrap-complete
+      tags:
+        - okd4-bootstrap-complete
+
+- name: Approving the CSRs for OKD4 nodes
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-approve-csr
+      tags:
+        - okd4-approve-csr
+
+- name: Configuring OKD4 infra nodes
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-infra-nodes
+      tags:
+        - okd4-infra-nodes
+
+- name: Run OKD4 installer install-complete task
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-install-complete
+      tags:
+        - okd4-install-complete
+
+- name: Post-install configure haproxy on lb1 and lb2
+  hosts: lb
+  gather_facts: false
+  roles:
+    - role: lb-postinstall
+      tags:
+        - lb-postinstall
+
+- name: Run OKD4 post-install monitoring
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-postinstall-monitoring
+      tags:
+        - okd4-postinstall-monitoring
+
+- name: Run OKD4 post-install registry
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-postinstall-registry
+      tags:
+        - okd4-postinstall-registry
+      when: openshift_image_registry_install|default(false)|bool == true
+
+- name: Run FCOS post-install tasks
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-postinstall-fcos
+      tags:
+        - okd4-postinstall-fcos
+
+- name: Run OKD4 post-install ntp
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: okd4-postinstall-ntp
+      tags:
+        - okd4-postinstall-ntp
+
+- name: OKD4 post-install enable RedHat OperatorHub
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: okd4-postinstall-operatorhub
+      tags:
+        - okd4-postinstall-operatorhub
+      when: openshift_pull_secret|length > 0
+
+- name: OKD4 post-install configure Cluster Logging
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: okd4-postinstall-logging
+      tags:
+        - okd4-postinstall-logging
+      when: openshift_cluster_logging_install|default(false) == true
+
+- name: Run VMWare post-install tasks
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: vmware-postinstall
+      tags:
+        - vmware-postinstall

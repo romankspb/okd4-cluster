@@ -1,0 +1,21 @@
+- name: Approving the CSRs for OKD4 nodes
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig get csr --output=custom-columns=NAME:.metadata.name --no-headers | xargs {{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig adm certificate approve ; {{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig get csr | grep {{hostvars[item]['hostname']}}"
+  register: node_csr
+  until: node_csr.stdout.find('Approved,Issued') != -1
+  delay: 10
+  retries: 100
+  with_items:
+    - "{{groups[provision_group_masters]}}"
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"
+
+- name: Find all CSRs for OKD4 nodes
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig get csr"
+  register: node_csr
+  when: debug|default(false)|bool == true
+
+- name: Display all CSRs for OKD4 nodes
+  ignore_errors: yes
+  debug:
+    msg: "{{node_csr.stdout_lines}}}"
+  when: debug|default(false)|bool == true

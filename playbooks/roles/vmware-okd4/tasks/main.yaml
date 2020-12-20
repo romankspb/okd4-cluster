@@ -1,0 +1,124 @@
+- name: Debug Append Bootstrap Ignition File
+  debug:
+    msg: "{{ lookup('template', 'templates/append-bootstrap.j2') | to_json }}"
+  when: debug|default(false)|bool == true
+
+- name: "Create OKD4 VMs (cluster placement)"
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    cluster: "{{vc_cluster}}"
+    datacenter: "{{vc_datacenter}}"
+    datastore: "{{vc_datastore}}"
+    folder: "{{cluster_name}}"
+    state: present
+    guest_id: rhel8_64Guest
+    template: "{{vm_template_okd}}"
+    name: "{{hostvars[item]['hostname']}}"
+    disk:
+    - size_gb: "{{hostvars[item]['disk_size_gb']}}"
+      type: thin
+      datastore: "{{vc_datastore}}"
+    hardware:
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+        version: 14
+    customvalues:
+      - key: "guestinfo.ignition.config.data"
+        value: "{{ lookup('template', 'templates/append-bootstrap.j2') | to_json | b64encode }}"
+      - key: "guestinfo.ignition.config.data.encoding"
+        value: base64
+      - key: "disk.EnableUUID"
+        value: "TRUE"
+      - key: "guestinfo.afterburn.initrd.network-kargs"
+        value: "ip={{hostvars[item]['ipaddr'] | ipaddr('address')}}::{{hostvars[item]['gateway'] | ipaddr('address')}}:{{hostvars[item]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[item]['hostname']}}:{{hostvars[item]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}"
+  delegate_to: localhost
+  register: vmware_guest_results
+  with_items:
+    - "{{groups[provision_group_bootstrap]}}"
+    - "{{groups[provision_group_masters]}}"
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"
+  when:
+    - hostvars[item].hypervisor is not defined
+
+- name: "Create OKD4 VMs (hypervisor placement)"
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    esxi_hostname: "{{hostvars[item]['hypervisor']}}"
+    datacenter: "{{vc_datacenter}}"
+    datastore: "{{vc_datastore}}"
+    folder: "{{cluster_name}}"
+    state: present
+    guest_id: rhel8_64Guest
+    template: "{{vm_template_okd}}"
+    name: "{{hostvars[item]['hostname']}}"
+    disk:
+    - size_gb: "{{hostvars[item]['disk_size_gb']}}"
+      type: thin
+      datastore: "{{vc_datastore}}"
+    hardware:
+        memory_mb: "{{hostvars[item]['memory']}}"
+        num_cpus: "{{hostvars[item]['vcpu']}}"
+        version: 14
+    customvalues:
+      - key: "guestinfo.ignition.config.data"
+        value: "{{ lookup('template', 'templates/append-bootstrap.j2') | to_json | b64encode }}"
+      - key: "guestinfo.ignition.config.data.encoding"
+        value: base64
+      - key: "disk.EnableUUID"
+        value: "TRUE"
+      - key: "guestinfo.afterburn.initrd.network-kargs"
+        value: "ip={{hostvars[item]['ipaddr'] | ipaddr('address')}}::{{hostvars[item]['gateway'] | ipaddr('address')}}:{{hostvars[item]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[item]['hostname']}}:{{hostvars[item]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}"
+  delegate_to: localhost
+  register: vmware_guest_results
+  with_items:
+    - "{{groups[provision_group_bootstrap]}}"
+    - "{{groups[provision_group_masters]}}"
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"
+  when:
+    - hostvars[item].hypervisor is defined
+
+- name: Startup Bootstrap VM
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    cluster: "{{vc_cluster}}"
+    datacenter: "{{vc_datacenter}}"
+    name: "{{hostvars[groups['bootstrap'][0]]['hostname']}}"
+    state: poweredon
+
+- name: Startup Master VMs
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    cluster: "{{vc_cluster}}"
+    datacenter: "{{vc_datacenter}}"
+    name: "{{hostvars[item]['hostname']}}"
+    state: poweredon
+  with_items:
+    - "{{groups[provision_group_masters]}}"
+
+- name: Startup Infra and Worker VMs
+  vmware_guest:
+    hostname: "{{vc_host}}"
+    username: "{{vc_user}}"
+    password: "{{vc_password}}"
+    validate_certs: no
+    cluster: "{{vc_cluster}}"
+    datacenter: "{{vc_datacenter}}"
+    name: "{{hostvars[item]['hostname']}}"
+    state: poweredon
+  with_items:
+    - "{{groups[provision_group_infras]}}"
+    - "{{groups[provision_group_workers]}}"

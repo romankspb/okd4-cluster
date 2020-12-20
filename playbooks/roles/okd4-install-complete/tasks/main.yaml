@@ -1,0 +1,8 @@
+- name: Wait for OKD4 install-complete
+  shell: "{{okd4_installer_directory}}/openshift-install --dir={{okd4_installer_directory}}/{{cluster_name}} wait-for install-complete"
+  register: install_complete
+
+- name: OKD4 install-complete
+  ignore_errors: yes
+  debug:
+    msg: "{{install_complete.stderr_lines}}}"

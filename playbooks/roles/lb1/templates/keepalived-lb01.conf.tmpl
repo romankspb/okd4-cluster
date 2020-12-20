@@ -1,0 +1,66 @@
+global_defs {
+   notification_email {
+     devops@domain.ru
+   }
+   notification_email_from {{cluster_name}}@{{cluster_base_domain}}
+   smtp_server localhost
+   smtp_connect_timeout 30
+   smtp_alert true
+   smtp_alert_vrrp true
+   smtp_alert_checker true
+   router_id {{hostvars[groups['lb'][0]]['hostname']}}
+   script_user root
+}
+
+vrrp_script chk_haproxy {
+        script "/usr/bin/killall -0 haproxy"
+        interval 2
+        fall 2
+        rise 2
+}
+
+vrrp_instance okd4_api {
+        state MASTER
+
+        interface {{hostvars[groups['lb'][0]]['lb_api_if']}}
+        virtual_router_id 104
+        priority 150
+        unicast_src_ip {{hostvars[groups['lb'][0]]['lb_api_ipaddr']}}
+        unicast_peer {
+                {{hostvars[groups['lb'][1]]['lb_api_ipaddr']}}
+        }
+
+        authentication {
+                auth_type PASS
+                auth_pass zigma777
+       }
+        virtual_ipaddress {
+                {{cluster_api_lb_ipaddr}} dev {{hostvars[groups['lb'][0]]['lb_api_if']}}
+        }
+        track_script {
+                chk_haproxy
+        }
+}
+
+vrrp_instance okd4_ingress {
+        state BACKUP
+
+        interface {{hostvars[groups['lb'][0]]['lb_ingress_if']}}
+        virtual_router_id 108
+        priority 100
+        unicast_src_ip {{hostvars[groups['lb'][0]]['lb_ingress_ipaddr']}}
+        unicast_peer {
+                {{hostvars[groups['lb'][1]]['lb_ingress_ipaddr']}}
+        }
+
+        authentication {
+                auth_type PASS
+                auth_pass zigma777
+       }
+        virtual_ipaddress {
+                {{ingress_lb_ipaddr}} dev {{hostvars[groups['lb'][0]]['lb_ingress_if']}}
+        }
+        track_script {
+                chk_haproxy
+        }
+}

@@ -1,0 +1,14 @@
+- name: Create OKD4 OperatorHub cluster config
+  template:
+    src: templates/operatorhub-cluster.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/operatorhub-cluster.yaml"
+
+- name: Apply OKD4 OperatorHub cluster config
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig apply -f {{okd4_installer_directory}}/{{cluster_name}}/operatorhub-cluster.yaml"
+  register: oh_cluster
+
+- name: Apply OKD4 OperatorHub cluster config
+  ignore_errors: yes
+  debug:
+    msg: "{{oh_cluster.stdout_lines}}}"
+  when: debug|default(false)|bool == true

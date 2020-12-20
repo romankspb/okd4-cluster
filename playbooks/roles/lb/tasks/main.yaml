@@ -1,0 +1,46 @@
+- name: Setting FQDN hostname
+  shell: hostnamectl set-hostname {{hostname}}
+
+- name: Install HAProxy and keepalived and other required packages
+  dnf:
+    name:
+      - haproxy
+      - keepalived
+      - policycoreutils
+      - policycoreutils-python-utils
+      - rsyslog
+    state: present
+
+- name: Enable and start rsyslog
+  systemd:
+    name: rsyslog
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Check SELinux enabled at runtime
+  shell: getenforce
+  register: SELinuxRuntimeState
+
+- name: Allow haproxy connect to any ports
+  shell: setsebool -P haproxy_connect_any=on
+  when: SELinuxRuntimeState.stdout.find('Enforcing') != -1
+
+- name: Create haproxy.cfg
+  template:
+    src: haproxy.cfg.tmpl
+    dest: /etc/haproxy/haproxy.cfg
+
+- name: Enable and start haproxy
+  systemd:
+    name: haproxy
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Disable and stop firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+    daemon_reload: yes

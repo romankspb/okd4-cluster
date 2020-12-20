@@ -1,0 +1,11 @@
+- name: Create keepalived.conf
+  template:
+    src: keepalived-lb02.conf.tmpl
+    dest: /etc/keepalived/keepalived.conf
+
+- name: Enable and start keepalived
+  systemd:
+    name: keepalived
+    state: started
+    enabled: yes
+    daemon_reload: yes

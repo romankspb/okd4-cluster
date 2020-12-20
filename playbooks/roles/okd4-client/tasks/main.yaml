@@ -1,0 +1,16 @@
+- name: Get OKD4 client
+  get_url:
+    url: "{{okd4_client_url}}"
+    dest: "{{okd4_installer_directory}}/{{okd4_client_filename}}"
+
+- name: Check if OKD4 client exists
+  stat: 
+    path: "{{okd4_installer_directory}}/oc"
+  register: okd4_client
+
+- name: Unpack OKD4 client
+  unarchive:
+    src: "{{okd4_installer_directory}}/{{okd4_client_filename}}"
+    dest: "{{okd4_installer_directory}}"
+    remote_src: yes
+  when: okd4_client.stat.exists == false

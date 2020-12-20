@@ -1,0 +1,23 @@
+- name: Create OKD4 install-config.yaml
+  template:
+    src: install-config.yaml.tmpl
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/install-config.yaml"
+
+- name: Create manifests
+  shell: "{{okd4_installer_directory}}/openshift-install create manifests --dir={{okd4_installer_directory}}/{{cluster_name}}"
+
+- name: Make master nodes unschedulable
+  replace:
+    path: "{{okd4_installer_directory}}/{{cluster_name}}/manifests/cluster-scheduler-02-config.yml"
+    regexp: 'mastersSchedulable: true$'
+    replace: 'mastersSchedulable: false'
+
+- name: Create ignition configs
+  shell: "{{okd4_installer_directory}}/openshift-install create ignition-configs --dir={{okd4_installer_directory}}/{{cluster_name}}"
+
+- name: Encode ignition configs to base64
+  shell: "base64 -w 0 {{okd4_installer_directory}}/{{cluster_name}}/{{item}} > {{okd4_installer_directory}}/{{cluster_name}}/{{item}}.b64"
+  loop:
+    - bootstrap.ign
+    - master.ign
+    - worker.ign

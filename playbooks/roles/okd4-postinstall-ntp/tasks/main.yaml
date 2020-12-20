@@ -1,0 +1,43 @@
+- name: Create chrony.conf
+  template:
+    src: chrony.conf
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/chrony.conf"
+
+- name: Encode chrony.conf to base64
+  shell: "base64 -w 0 {{okd4_installer_directory}}/{{cluster_name}}/chrony.conf"
+  register: chrony_conf_b64
+  delegate_to: localhost
+  run_once: true
+
+- set_fact:
+    chrony_conf_b64={{chrony_conf_b64.stdout}}
+
+- name: Create 99-masters-chrony-configuration.yaml
+  template:
+    src: 99-masters-chrony-configuration.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/99-masters-chrony-configuration.yaml"
+
+- name: Create 99-workers-chrony-configuration.yaml
+  template:
+    src: 99-workers-chrony-configuration.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/99-workers-chrony-configuration.yaml"
+
+- name: Apply master nodes NTP chrony configuration
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig apply -f {{okd4_installer_directory}}/{{cluster_name}}/99-masters-chrony-configuration.yaml"
+  register: chrony_masters
+
+- name: Apply master nodes chrony configuration
+  ignore_errors: yes
+  debug:
+    msg: "{{chrony_masters.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Apply worker nodes chrony configuration
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig apply -f {{okd4_installer_directory}}/{{cluster_name}}/99-workers-chrony-configuration.yaml"
+  register: chrony_workers
+
+- name: Apply worker nodes NTP chrony configuration
+  ignore_errors: yes
+  debug:
+    msg: "{{chrony_workers.stdout_lines}}}"
+  when: debug|default(false)|bool == true

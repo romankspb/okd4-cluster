@@ -1,0 +1,10 @@
+- name: Remove bootstrap node from loadbalancer configuration
+  lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    state: absent
+    regexp: '.*bootstrap.*'
+
+- name: Restart haproxy
+  systemd:
+    name: haproxy
+    state: restarted

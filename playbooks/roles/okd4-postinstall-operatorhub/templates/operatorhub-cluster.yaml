@@ -1,0 +1,11 @@
+apiVersion: config.openshift.io/v1
+kind: OperatorHub
+metadata:
+  name: cluster
+spec:
+  disableAllDefaultSources: true
+  sources:
+  - disabled: false
+    name: redhat-operators
+  - disabled: false
+    name: community-operators

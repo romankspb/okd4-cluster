@@ -1,0 +1,125 @@
+variant: fcos
+version: 1.0.0
+storage:
+  directories:
+  - path: /var/home/core/bin
+    overwrite: true
+    mode: 0755
+    user:
+      name: core
+    group:
+      name: core
+  files:
+    - path: /etc/systemd/timesyncd.conf
+      overwrite: true
+      mode: 0644
+      user:
+        name: root
+      group:
+        name: root
+      contents:
+        inline: |
+          [Time]
+          NTP={{cluster_ntp_servers[0]}} {{cluster_ntp_servers[1]}}
+
+    - path: /etc/sysctl.d/20-silence-audit.conf
+      overwrite: true
+      mode: 0644
+      user:
+        name: root
+      group:
+        name: root
+      contents:
+        inline: |
+          # Stop flooding auditd to console
+          kernel.printk=4
+
+    - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+      mode: 0600
+      overwrite: true
+      contents:
+        inline: |
+          [connection]
+          type=ethernet
+          interface-name=eth0
+          [ipv4]
+          method=manual
+          addresses={{hostvars[groups['helper'][0]]['ipaddr']}}
+          gateway={{hostvars[groups['helper'][0]]['gateway']}}
+          dns={{cluster_dns_servers[0]}};{{cluster_dns_servers[1]}}
+
+    - path: /var/home/core/bin/fcos-install-block-device.sh
+      overwrite: true
+      mode: 0755
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          #!/bin/bash
+          if [ $# -lt 2 ]; then
+              echo "Usage: $(basename $0) file.ign.b64 node_hostname block_device"
+              exit 1
+          fi
+          base64 -d $1 > fcos.ign
+          sudo coreos-installer install "$3" -s stable -i fcos.ign --insecure --firstboot-args="$(cat firstboot.args | grep $2 | tr -d \\n)"
+
+    - path: /var/home/core/firstboot.args
+      overwrite: true
+      mode: 0644
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          {% for master in groups[provision_group_masters] %}ip={{hostvars[master]['ipaddr'] | ipaddr('address')}}::{{hostvars[master]['gateway'] | ipaddr('address')}}:{{hostvars[master]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[master]['hostname']}}:{{hostvars[master]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}
+          {% endfor %}
+          {% for infra in groups[provision_group_infras] %}ip={{hostvars[infra]['ipaddr'] | ipaddr('address')}}::{{hostvars[infra]['gateway'] | ipaddr('address')}}:{{hostvars[infra]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[infra]['hostname']}}:{{hostvars[infra]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}
+          {% endfor %}
+          {% for worker in groups[provision_group_workers] %}ip={{hostvars[worker]['ipaddr'] | ipaddr('address')}}::{{hostvars[worker]['gateway'] | ipaddr('address')}}:{{hostvars[worker]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[worker]['hostname']}}:{{hostvars[worker]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}
+          {% endfor %}
+          {% for bootstrap in groups[provision_group_bootstrap] %}ip={{hostvars[bootstrap]['ipaddr'] | ipaddr('address')}}::{{hostvars[bootstrap]['gateway'] | ipaddr('address')}}:{{hostvars[bootstrap]['ipaddr'] | ipaddr('netmask')}}:{{hostvars[bootstrap]['hostname']}}:{{hostvars[bootstrap]['ifname']}}:off nameserver={{cluster_dns_servers[0]}} nameserver={{cluster_dns_servers[1]}}
+          {% endfor %}
+
+    - path: /var/home/core/bootstrap.ign.b64
+      overwrite: true
+      mode: 0644
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          {{bootstrap_ign_b64}}
+
+    - path: /var/home/core/master.ign.b64
+      overwrite: true
+      mode: 0644
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          {{master_ign_b64}}
+
+    - path: /var/home/core/worker.ign.b64
+      overwrite: true
+      mode: 0644
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          {{worker_ign_b64}}
+passwd:
+  users:
+    - name: core
+      password_hash: "{{fcos_core_user_pw_hash}}"
+      ssh_authorized_keys:
+        - "{{ssh_pub_key}}"
+    - name: root
+      password_hash: "{{fcos_core_user_pw_hash}}"

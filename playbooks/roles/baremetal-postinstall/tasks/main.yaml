@@ -1,0 +1,5 @@
+- pause:
+      seconds: 5
+      prompt: |
+            Cluster '{{cluster_name}}' setup complete.
+            The credentials are in the directory '{{okd4_installer_directory}}/{{cluster_name}}/auth'.

@@ -1,0 +1,6 @@
+- name: Install required packages
+  dnf:
+    name:
+      - python3-netaddr
+    state: present
+  become: true

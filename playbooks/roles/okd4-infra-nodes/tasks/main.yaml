@@ -1,0 +1,49 @@
+- name: Add label node-role.kubernetes.io/app to OKD4 worker nodes
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig label node/{{hostvars[item]['hostname']}} node-role.kubernetes.io/app=\"\" --overwrite=true"
+  with_items:
+    - "{{groups[provision_group_workers]}}"
+
+- name: Add label node-role.kubernetes.io/infra to OKD4 infra nodes
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig label node/{{hostvars[item]['hostname']}} node-role.kubernetes.io/infra=\"\" --overwrite=true"
+  with_items:
+    - "{{groups[provision_group_infras]}}"
+
+- name: Setting cluster-wide Default Node Selector to node-role.kubernetes.io/app
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig patch scheduler cluster --patch '{\"spec\": {\"defaultNodeSelector\": \"node-role.kubernetes.io/app=\"}}' --type=merge"
+  register: default_node_selector
+
+- name: Setting cluster-wide Default Node Selector to node-role.kubernetes.io/app
+  ignore_errors: yes
+  debug:
+    msg: "{{default_node_selector.stdout_lines}}"
+  when: debug|default(false)|bool == true
+
+- name: Placing OKD4 ingress controller on infra nodes
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig patch -n openshift-ingress-operator ingresscontroller/default --patch '{\"spec\":{\"nodePlacement\":{\"nodeSelector\":{\"matchLabels\":{\"node-role.kubernetes.io/infra\":\"\"}}}}}' --type=merge"
+  register: router_on_infra
+
+- name: Placing OKD4 ingress controller on infra nodes
+  ignore_errors: yes
+  debug:
+    msg: "{{router_on_infra.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Scaling OKD4 ingress controller by infra nodes count
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig patch -n openshift-ingress-operator ingresscontroller/default --patch '{\"spec\":{\"replicas\": {{groups[provision_group_infras] | length}}}}' --type=merge"
+  register: router_scale_infra
+
+- name: Scaling OKD4 ingress controller by infra nodes count
+  ignore_errors: yes
+  debug:
+    msg: "{{router_scale_infra.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+#- name: Redeploy OKD4 ingress controller
+#  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig delete pods -n openshift-ingress-operator --all"
+#  register: router_redeploy_infra
+
+#- name: Redeploy OKD4 ingress controller
+#  ignore_errors: yes
+#  debug:
+#    msg: "{{router_redeploy_infra.stdout_lines}}}"
+#  when: debug|default(false)|bool == true

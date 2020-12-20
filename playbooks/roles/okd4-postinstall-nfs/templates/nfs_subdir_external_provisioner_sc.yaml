@@ -1,0 +1,9 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "{{nfs_subdir_external_provisioner_sc_default|lower}}"
+  name: {{nfs_subdir_external_provisioner_sc_name}}
+provisioner: {{nfs_subdir_external_provisioner_name}} # or choose another name, must match deployment's env PROVISIONER_NAME'
+parameters:
+  archiveOnDelete: "false"

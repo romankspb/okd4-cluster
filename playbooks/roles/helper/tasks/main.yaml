@@ -1,0 +1,44 @@
+- name: Setting FQDN hostname
+  shell:  hostnamectl set-hostname {{hostname}}
+
+- name: Install Packages
+  dnf:
+    name:
+      - httpd
+      - php
+    state: present
+
+- name: Copy ignition PHP script
+  copy:
+    src: files/ignition-downloader.php
+    dest: /var/www/html/ignition-downloader.php
+    owner: root
+    group: root
+    mode: 0644
+    setype: httpd_sys_content_t
+
+- name: Copy ignition files
+  copy:
+    src: "{{okd4_installer_directory}}/{{cluster_name}}/{{item}}"
+    dest: /var/www/html/
+    owner: root
+    group: root
+    mode: 0644
+    setype: httpd_sys_content_t
+  loop:
+    - bootstrap.ign
+    - master.ign
+    - worker.ign
+
+- name: Disable and stop firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+    daemon_reload: yes
+
+- name: Enable and start httpd service
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes

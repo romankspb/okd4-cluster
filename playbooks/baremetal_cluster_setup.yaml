@@ -1,0 +1,94 @@
+- name: Prepare Ansible controller host
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: prepare
+      tags:
+        - prepare
+
+- name: Prepare Ansible controller host for baremetal FCOS istallation
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+    - role: baremetal-prepare
+      tags:
+        - baremetal-prepare
+
+- name: Prepare OKD4 installer
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    okd4_installer_filename: "{{okd4_installer_url | basename}}"
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: okd4-installer
+      tags:
+        - okd4-installer
+
+- name: Prepare OKD4 installer for baremetal platform
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    okd4_installer_filename: "{{okd4_installer_url | basename}}"
+  vars_files:
+    - vault.yaml
+  roles:
+    - role: baremetal-okd4-installer
+      tags:
+        - baremetal-okd4-installer
+
+- name: Prepare OKD4 client
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    okd4_client_filename: "{{okd4_client_url | basename}}"
+  roles:
+    - role: okd4-client
+      tags:
+        - okd4-client
+
+- name: Configure haproxy on lb1 and lb2
+  hosts: lb
+  gather_facts: false
+  roles:
+    - role: lb
+      tags:
+        - lb
+
+- name: Configure keepalived on lb1
+  hosts: lb[0]
+  gather_facts: false
+  roles:
+    - role: lb1
+      tags:
+        - keepalived
+
+- name: Configure keepalived on lb2
+  hosts: lb[1]
+  gather_facts: false
+  roles:
+    - role: lb2
+      tags:
+        - keepalived
+
+- name: Create FCOS install iso
+  hosts: localhost
+  vars:
+     bootstrap_ign_b64: "{{ lookup('file', '{{okd4_installer_directory}}/{{cluster_name}}/bootstrap.ign.b64') }}"
+     master_ign_b64: "{{ lookup('file', '{{okd4_installer_directory}}/{{cluster_name}}/master.ign.b64') }}"
+     worker_ign_b64: "{{ lookup('file', '{{okd4_installer_directory}}/{{cluster_name}}/worker.ign.b64') }}"
+  gather_facts: false
+  roles:
+    - role: baremetal-fcos-install-iso
+      tags:
+        - baremetal-fcos-install-iso
+
+#
+# create VMs by hand or setup baremetal servers
+#

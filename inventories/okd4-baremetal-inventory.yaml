@@ -1,0 +1,189 @@
+#
+# BAREMETAL
+#
+
+all:
+  vars:
+    debug: true
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_user: root
+
+    baremetal_fcos_iso_file: "/home/romank/Downloads/soft/os/FCOS/fedora-coreos-32.20200923.3.0-live.x86_64.iso"
+
+    okd4_installer_url: "https://github.com/openshift/okd/releases/download/4.5.0-0.okd-2020-10-03-012432/openshift-install-linux-4.5.0-0.okd-2020-10-03-012432.tar.gz"
+    okd4_installer_directory: "/home/romank/work/SRC/spb1-tlkk-okd4-installer"
+
+    okd4_client_url: "https://github.com/openshift/okd/releases/download/4.5.0-0.okd-2020-10-03-012432/openshift-client-linux-4.5.0-0.okd-2020-10-03-012432.tar.gz"
+
+    ssh_pub_key: "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEApZRcJV7ii6qIe/mnPVow8qwVcu6hJYTK4UlvRZ7UF7fDnHcMPMfOPfIgfcX78BOeV4QLU1iaa4ff1ZodqoQkF//E0NBK/kqel4KNDdvpC1AKPBD9pgxU6VojW0b+9yKJnYi32S2JtSrXt6lJ21VKGRkc4kBBfXSHkFJsEVSCs9xNRpNkNbQSPeNjl+xTMHwg16smo3q0TV9OSLPqm7bAiCQGaHNKCVpv6osjUXTgqEfMkDlTEAz4bRK8eM67aR/moFL4S+lVNWhyBwT4OzqeBcUugjxwXazvH8mJ3+nm8cvEZOwtVOAkPqSdfZorRk94Huv+bzatFI/Dlo/FCBSFMw== r.kravtsov@domain.ru"
+
+    fcos_core_user_pw_hash: ""
+
+    provision_group_lb: lb
+    provision_group_helper: helper
+    provision_group_bootstrap: bootstrap
+    provision_group_masters: masters
+    provision_group_infras: infras
+    provision_group_workers: workers
+
+    cluster_name: okd4-baremetal
+    cluster_base_domain: domain.ru
+    cluster_dns_servers:
+      - 10.195.238.14
+      - 10.194.176.130
+    cluster_ntp_servers:
+      - 10.195.238.14
+      - 10.194.176.130
+
+    cluster_pods_network: 10.108.0.0/14
+
+    # OKD4 API VIP
+    cluster_api_lb_ipaddr: 10.192.189.212/24
+    cluster_api_lb_dnsname: "api.{{cluster_name}}.{{cluster_base_domain}}"
+    cluster_api_int_lb_dnsname: "api-int.{{cluster_name}}.{{cluster_base_domain}}"
+
+    # OKD4 Ingress VIP
+    ingress_lb_ipaddr: 10.192.189.214/24
+    ingress_apps_lb_dnsname: "*.apps.{{cluster_name}}.{{cluster_base_domain}}"
+
+    # OpenShiftSDN (default) or OVNKubernetes
+    openshift_network_type: "OpenShiftSDN"
+
+    # Registry (configured default storage class is required)
+    openshift_image_registry_install: true
+    openshift_image_registry_pvc_size: "200Gi"
+
+    # Cluster Logging (configured storage class is required)
+    openshift_cluster_logging_install: true
+    openshift_cluster_logging_subscription_channel: "4.5"
+    openshift_cluster_logging_es_sc_name: "okd4-nfs-export"
+    openshift_cluster_logging_es_pvc_size: "200Gi"
+    openshift_cluster_logging_es_node_count: "1"
+    openshift_cluster_logging_es_redundancy: "ZeroRedundancy"
+    openshift_cluster_logging_retention_application: "1d"
+    openshift_cluster_logging_retention_infra: "1d"
+    openshift_cluster_logging_retention_audit: "1d"
+
+    # NFS Storage Class (sc_default: true - set as default storage class, reqired for Registry and other apps)
+    # https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner.git
+    nfs_subdir_external_provisioner_install: true
+    nfs_subdir_external_provisioner_project_name: "okd4-nfs"
+    nfs_subdir_external_provisioner_name: "okd4-nfs.domain.ru/export"
+    nfs_subdir_external_provisioner_sc_name: "okd4-nfs-export"
+    nfs_subdir_external_provisioner_sc_default: true
+    nfs_subdir_external_provisioner_nfs_server_ipaddr: 10.192.189.224
+    nfs_subdir_external_provisioner_nfs_server_name: "okd4-nfs.domain.ru"
+    nfs_subdir_external_provisioner_nfs_server_path: "/export"
+
+  # IP address of the helper node will be assigned to the Installation live CD
+  children:
+    lb:
+      hosts:
+        lb1:
+          memory: 8000
+          vcpu: 8
+          ansible_host: spb1-tlkk-okd4-lb1.domain.ru
+          hostname: spb1-tlkk-okd4-lb1.domain.ru
+          gateway: 10.192.189.1
+          lb_api_if: eth0
+          lb_api_ipaddr: 10.192.189.211/24
+          lb_ingress_if: eth0
+          lb_ingress_ipaddr: 10.192.189.211/24
+        lb2:
+          memory: 8000
+          vcpu: 8
+          ansible_host: spb1-tlkk-okd4-lb2.domain.ru
+          hostname: spb1-tlkk-okd4-lb2.domain.ru
+          gateway: 10.192.189.1
+          lb_api_if: eth0
+          lb_api_ipaddr: 10.192.189.213/24
+          lb_ingress_if: eth0
+          lb_ingress_ipaddr: 10.192.189.213/24
+    helper:
+      hosts:
+        helper1:
+          memory: 512
+          vcpu: 2
+          ansible_host: spb1-tlkk-okd4-helper.domain.ru
+          hostname: spb1-tlkk-okd4-helper.domain.ru
+          ipaddr: 10.192.189.209/24
+          gateway: 10.192.189.1
+          ifname: eth0
+    bootstrap:
+      hosts:
+        bootstrap1:
+          memory: 16384
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-bootstrap.domain.ru
+          ipaddr: 10.192.189.210/24
+          gateway: 10.192.189.1
+          ifname: eth0
+    masters:
+      hosts:
+        master1:
+          memory: 16384
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-master1.domain.ru
+          ipaddr: 10.192.189.215/24
+          gateway: 10.192.189.1
+          ifname: eth0
+        master2:
+          memory: 16384
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-master2.domain.ru
+          ipaddr: 10.192.189.216/24
+          gateway: 10.192.189.1
+          ifname: eth0
+        master3:
+          memory: 16384
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-master3.domain.ru
+          ipaddr: 10.192.189.217/24
+          gateway: 10.192.189.1
+          ifname: eth0
+    infras:
+      hosts:
+        infra1:
+          memory: 32768
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-infra1.domain.ru
+          ipaddr: 10.192.189.218/24
+          gateway: 10.192.189.1
+          ifname: eth0
+        infra2:
+          memory: 32768
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-infra2.domain.ru
+          ipaddr: 10.192.189.219/24
+          gateway: 10.192.189.1
+          ifname: eth0
+        infra3:
+          memory: 32768
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-infra3.domain.ru
+          ipaddr: 10.192.189.220/24
+          gateway: 10.192.189.1
+          ifname: eth0
+    workers:
+      hosts:
+        worker1:
+          memory: 32768
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-worker1.domain.ru
+          ipaddr: 10.192.189.221/24
+          gateway: 10.192.189.1
+          ifname: eth0
+        worker2:
+          memory: 32768
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-worker2.domain.ru
+          ipaddr: 10.192.189.222/24
+          gateway: 10.192.189.1
+          ifname: eth0
+        worker3:
+          memory: 32768
+          vcpu: 8
+          hostname: spb1-tlkk-okd4-worker3.domain.ru
+          ipaddr: 10.192.189.223/24
+          gateway: 10.192.189.1
+          ifname: eth0

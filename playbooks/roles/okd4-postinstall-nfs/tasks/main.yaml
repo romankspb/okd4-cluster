@@ -1,0 +1,64 @@
+- name: Create project {{nfs_subdir_external_provisioner_project_name}}
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig new-project {{nfs_subdir_external_provisioner_project_name}} --description='NFS subdir external provisioner'"
+  register: nfs_project
+
+- name: Create project {{nfs_subdir_external_provisioner_project_name}}
+  ignore_errors: yes
+  debug:
+    msg: "{{nfs_project.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Create nfs_subdir_external_provisioner_rbac.yaml
+  template:
+    src: templates/nfs_subdir_external_provisioner_rbac.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/nfs_subdir_external_provisioner_rbac.yaml"
+
+- name: Apply nfs_subdir_external_provisioner_rbac.yaml
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/nfs_subdir_external_provisioner_rbac.yaml"
+  register: nfs_rbac
+
+- name: Apply nfs_subdir_external_provisioner_rbac.yaml
+  ignore_errors: yes
+  debug:
+    msg: "{{nfs_rbac.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Add SCC hostmount-anyuid to user nfs-client-provisioner
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig adm policy add-scc-to-user hostmount-anyuid system:serviceaccount:{{nfs_subdir_external_provisioner_project_name}}:nfs-client-provisioner"
+  register: nfs_user
+
+- name: Add SCC hostmount-anyuid to user nfs-client-provisioner
+  ignore_errors: yes
+  debug:
+    msg: "{{nfs_user.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Create nfs_subdir_external_provisioner_deployment.yaml
+  template:
+    src: templates/nfs_subdir_external_provisioner_deployment.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/nfs_subdir_external_provisioner_deployment.yaml"
+
+- name: Apply nfs_subdir_external_provisioner_deployment.yaml
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/nfs_subdir_external_provisioner_deployment.yaml"
+  register: nfs_deployment
+
+- name: Apply nfs_subdir_external_provisioner_deployment.yaml
+  ignore_errors: yes
+  debug:
+    msg: "{{nfs_deployment.stdout_lines}}}"
+  when: debug|default(false)|bool == true
+
+- name: Create nfs_subdir_external_provisioner_sc.yaml
+  template:
+    src: templates/nfs_subdir_external_provisioner_sc.yaml
+    dest: "{{okd4_installer_directory}}/{{cluster_name}}/nfs_subdir_external_provisioner_sc.yaml"
+
+- name: Apply nfs_subdir_external_provisioner_sc.yaml
+  shell: "{{okd4_installer_directory}}/oc --kubeconfig {{okd4_installer_directory}}/{{cluster_name}}/auth/kubeconfig create -f {{okd4_installer_directory}}/{{cluster_name}}/nfs_subdir_external_provisioner_sc.yaml"
+  register: nfs_sc
+
+- name: Apply nfs_subdir_external_provisioner_sc.yaml
+  ignore_errors: yes
+  debug:
+    msg: "{{nfs_sc.stdout_lines}}}"
+  when: debug|default(false)|bool == true
